@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 
+const DEFAULT_PROMO_IMAGE = process.env.NEXT_PUBLIC_PROMO_MEDIA_URL || ""
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<"products" | "menu" | "netmetering" | "errors" | "messages">("products");
   const [loading, setLoading] = useState(true);
@@ -32,10 +33,10 @@ export default function Dashboard() {
   const [messageForm, setMessageForm] = useState({
     recipients: "",
     message: "",
-    media_url: "",
+    media_url: DEFAULT_PROMO_IMAGE,
   });
   const [selectedMsgImageFile, setSelectedMsgImageFile] = useState<File | null>(null);
-  const [msgImagePreview, setMsgImagePreview] = useState<string>("");
+  const [msgImagePreview, setMsgImagePreview] = useState<string>(DEFAULT_PROMO_IMAGE);
   const [sendingMessage, setSendingMessage] = useState<boolean>(false);
 
   // Form states
@@ -199,9 +200,9 @@ export default function Dashboard() {
 
       if (res.ok) {
         showNotification(`✅ Message sent successfully to ${phoneNumbers.length} recipient(s)!`);
-        setMessageForm({ recipients: "", message: "", media_url: "" });
+        setMessageForm({ recipients: "", message: "", media_url: DEFAULT_PROMO_IMAGE});
         setSelectedMsgImageFile(null);
-        setMsgImagePreview("");
+        setMsgImagePreview(DEFAULT_PROMO_IMAGE);
       } else {
         showNotification(data.message || data.error || "Failed to send message", "error");
       }
@@ -422,7 +423,7 @@ export default function Dashboard() {
               { id: "menu", label: "Main Menu Config", icon: "📋" },
               { id: "netmetering", label: "Net Metering Guide", icon: "☀️" },
               { id: "errors", label: "Fault Knowledgebase", icon: "🛠", count: errorCodes.length },
-              { id: "messages", label: "Send Message", icon: "💬" },
+              { id: "messages", label: "Run Promotion", icon: "💬" },
             ].map((tab) => (
               <button
                 key={tab.id}
