@@ -550,7 +550,7 @@ export default function Dashboard() {
                   >
                     <option value="all">All Categories</option>
                     <option value="ongrid">On-Grid</option>
-                    <option value="offgrid">Hybrid / Off-Grid</option>
+                    <option value="hybrid">Hybrid / Off-Grid</option>
                     <option value="lithium">Lithium Batteries</option>
                   </select>
                   <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 flex items-center justify-center">
