@@ -16,7 +16,8 @@ export async function POST(req: Request) {
     const buffer = Buffer.from(bytes);
 
     // Access default Firebase storage bucket
-    const bucket = admin.storage().bucket();
+    const bucketName = process.env.FIREBASE_STORAGE_BUCKET || "meister-6670d.firebasestorage.app";
+    const bucket = admin.storage().bucket(bucketName);
     const fileExtension = file.name.split(".").pop();
     const fileName = `${folder}/${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${fileExtension}`;
     const fileRef = bucket.file(fileName);

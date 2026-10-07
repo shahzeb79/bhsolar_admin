@@ -11,7 +11,7 @@ if (!admin.apps.length) {
       const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, "utf8"));
       admin.initializeApp({
         credential: admin.credential.cert(serviceAccount),
-        storageBucket: "meister-6670d.firebasestorage.app", // Do NOT include "gs://"
+        storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
       });
       console.log("🔥 Firebase Admin initialized using serviceAccountKey.json!");
     } else if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
