@@ -2,34 +2,108 @@
 
 import { useEffect, useState, useMemo } from "react";
 
-const DEFAULT_PROMO_IMAGE = process.env.NEXT_PUBLIC_PROMO_MEDIA_URL || ""
+const DEFAULT_PROMO_IMAGE = process.env.NEXT_PUBLIC_PROMO_MEDIA_URL || "";
+
+// Static data defaults based on shoe product schema
+const STATIC_FEATURES = [
+  "Engineered double-layer breathable mesh for zero hot spots",
+  "Dual-density SouleFoam™ hollow tubular cushioning elements",
+  "Full-length SpeedBoard™ carbon-infused propulsion plate",
+  "Hands-free rapid speed lacing with standard spares in box",
+];
+
+const STATIC_TECHNOLOGIES = [
+  {
+    name: "SouleFoam™ Dual Core",
+    description: "Zero-gravity foam pods that collapse horizontally and vertically for multidirectional absorption.",
+  },
+  {
+    name: "SpeedBoard™ Plate",
+    description: "Converts kinetic downward energy from foot-strike into forward momentum.",
+  },
+  {
+    name: "Bio-Aero Upper",
+    description: "Crafted from 100% recycled polyester yarn engineered for maximum airflow.",
+  },
+];
+
+const STATIC_SUSTAINABILITY = {
+  recycledContent: "44% Total Recycled Content",
+  details: "100% recycled upper textile. Zero toxic dyes in manufacturing.",
+};
+
+const STATIC_SIZES = [
+  { size: "US 8", us: "US 8", eu: "EU 41.5", inStock: true },
+  { size: "US 8.5", us: "US 8.5", eu: "EU 42", inStock: true },
+  { size: "US 9", us: "US 9", eu: "EU 42.5", inStock: true },
+  { size: "US 9.5", us: "US 9.5", eu: "EU 43", inStock: true, stockCount: 3 },
+  { size: "US 10", us: "US 10", eu: "EU 44", inStock: true },
+  { size: "US 10.5", us: "US 10.5", eu: "EU 44.5", inStock: true },
+  { size: "US 11", us: "US 11", eu: "EU 45", inStock: true },
+  { size: "US 11.5", us: "US 11.5", eu: "EU 45.5", inStock: false },
+  { size: "US 12", us: "US 12", eu: "EU 46", inStock: true, stockCount: 2 },
+];
+
+const DEFAULT_COLORWAYS = [
+  {
+    id: "cr-white-slate",
+    name: "Chalk White / Slate Grey",
+    primaryColorHex: "#E2E8F0",
+    accentColorHex: "#1E293B",
+    image: "",
+  },
+  {
+    id: "cr-all-black",
+    name: "Monolith Phantom Black",
+    primaryColorHex: "#1E293B",
+    accentColorHex: "#0F172A",
+    image: "",
+  },
+  {
+    id: "cr-alpine-ice",
+    name: "Alpine Ice / Glacier Cyan",
+    primaryColorHex: "#E0F2FE",
+    accentColorHex: "#0284C7",
+    image: "",
+  },
+];
+
 export default function Dashboard() {
-  const [activeTab, setActiveTab] = useState<"products" | "menu" | "netmetering" | "errors" | "messages">("products");
+  const [activeTab, setActiveTab] = useState<"products" | "shoes" | "menu" | "netmetering" | "errors" | "messages">("products");
   const [loading, setLoading] = useState(true);
   const [clearingCache, setClearingCache] = useState(false);
   const [toast, setToast] = useState<{ msg: string; type: "success" | "error" | "info" } | null>(null);
 
-  // Search & Filter
+  // Search & Filters
   const [productSearch, setProductSearch] = useState("");
   const [productCategoryFilter, setProductCategoryFilter] = useState("all");
+  const [shoeSearch, setShoeSearch] = useState("");
+  const [shoeGenderFilter, setShoeGenderFilter] = useState("all");
   const [errorSearch, setErrorSearch] = useState("");
 
   // Drawer / Modal States
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+  const [isShoeModalOpen, setIsShoeModalOpen] = useState(false);
   const [isErrorModalOpen, setIsErrorModalOpen] = useState(false);
 
   // Data states
   const [products, setProducts] = useState<any[]>([]);
+  const [shoes, setShoes] = useState<any[]>([]);
   const [menu, setMenu] = useState<{ body: string; button: string; rows: any[] }>({ body: "", button: "", rows: [] });
   const [netMetering, setNetMetering] = useState<string>("");
   const [errorCodes, setErrorCodes] = useState<any[]>([]);
 
-  // Image Upload States
+  // Product Image Upload States
   const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>("");
   const [uploadingImage, setUploadingImage] = useState<boolean>(false);
 
-  // Send Message States (UPDATED: recipients field supports multiple numbers)
+  // Shoe Image Upload States (per colorway index)
+  const [selectedShoeFiles, setSelectedShoeFiles] = useState<{ [key: number]: File | null }>({});
+  const [shoeImagePreviews, setShoeImagePreviews] = useState<{ [key: number]: string }>({});
+  const [uploadingShoe, setUploadingShoe] = useState<boolean>(false);
+
+  // Send Message States
   const [messageForm, setMessageForm] = useState({
     recipients: "",
     message: "",
@@ -49,11 +123,39 @@ export default function Dashboard() {
     model: "",
     desc: "",
     specs: "",
-    image_url: ""
+    image_url: "",
+  });
+
+  const [shoeForm, setShoeForm] = useState({
+    id: "",
+    slug: "",
+    name: "",
+    subCategory: "Road Running",
+    gender: "men",
+    activity: "Road Running",
+    cushioning: "Max",
+    priceCHF: 199.90,
+    isNew: true,
+    isBestSeller: true,
+    badge: "Flagship Edition",
+    weight: "248 g / 8.7 oz",
+    heelDrop: "7 mm",
+    stability: "Neutral Balanced",
+    lacing: "Speed Lacing System",
+    description: "",
+    rating: 4.9,
+    reviewCount: 312,
+    colorways: JSON.parse(JSON.stringify(DEFAULT_COLORWAYS)),
   });
 
   const [errorForm, setErrorForm] = useState({
-    doc_id: "", category: "inverter", brand: "", error_code: "", title: "", solution_text: "", video_url: ""
+    doc_id: "",
+    category: "inverter",
+    brand: "",
+    error_code: "",
+    title: "",
+    solution_text: "",
+    video_url: "",
   });
 
   useEffect(() => {
@@ -68,14 +170,16 @@ export default function Dashboard() {
   const fetchAllData = async () => {
     setLoading(true);
     try {
-      const [prodRes, menuRes, netRes, errRes] = await Promise.all([
-        fetch("/api/products").then((r) => r.json()),
-        fetch("/api/menu").then((r) => r.json()),
-        fetch("/api/net-metering").then((r) => r.json()),
-        fetch("/api/errors").then((r) => r.json()),
+      const [prodRes, shoeRes, menuRes, netRes, errRes] = await Promise.all([
+        fetch("/api/products").then((r) => r.json()).catch(() => []),
+        fetch("/api/shoes").then((r) => r.json()).catch(() => []),
+        fetch("/api/menu").then((r) => r.json()).catch(() => null),
+        fetch("/api/net-metering").then((r) => r.json()).catch(() => null),
+        fetch("/api/errors").then((r) => r.json()).catch(() => []),
       ]);
 
       setProducts(Array.isArray(prodRes) ? prodRes : []);
+      setShoes(Array.isArray(shoeRes) ? shoeRes : []);
       setMenu(menuRes && typeof menuRes === "object" ? menuRes : { body: "", button: "", rows: [] });
       setNetMetering(netRes?.content || "");
       setErrorCodes(Array.isArray(errRes) ? errRes : []);
@@ -112,6 +216,19 @@ export default function Dashboard() {
     });
   }, [products, productSearch, productCategoryFilter]);
 
+  // Filtered Shoes
+  const filteredShoes = useMemo(() => {
+    return shoes.filter((s) => {
+      const matchesSearch =
+        (s.name || "").toLowerCase().includes(shoeSearch.toLowerCase()) ||
+        (s.slug || "").toLowerCase().includes(shoeSearch.toLowerCase()) ||
+        (s.id || "").toLowerCase().includes(shoeSearch.toLowerCase()) ||
+        (s.activity || "").toLowerCase().includes(shoeSearch.toLowerCase());
+      const matchesGender = shoeGenderFilter === "all" || s.gender === shoeGenderFilter;
+      return matchesSearch && matchesGender;
+    });
+  }, [shoes, shoeSearch, shoeGenderFilter]);
+
   // Filtered Error Codes
   const filteredErrorCodes = useMemo(() => {
     return errorCodes.filter((err) => {
@@ -123,12 +240,12 @@ export default function Dashboard() {
     });
   }, [errorCodes, errorSearch]);
 
-  // Upload image file to /api/upload
-  const uploadImageFile = async (file: File): Promise<string | null> => {
+  // Universal image upload helper function
+  const uploadImageFile = async (file: File, folder = "products"): Promise<string | null> => {
     try {
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("folder", "products");
+      formData.append("folder", folder);
 
       const res = await fetch("/api/upload", {
         method: "POST",
@@ -147,7 +264,7 @@ export default function Dashboard() {
     }
   };
 
-  // Send Message Handler (UPDATED to support multiple phone numbers)
+  // Send Message Handler
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!messageForm.recipients.trim() || !messageForm.message.trim()) {
@@ -155,7 +272,6 @@ export default function Dashboard() {
       return;
     }
 
-    // Process and format recipient phone numbers (supports commas, newlines, spaces)
     const phoneNumbers = messageForm.recipients
       .split(/[\n,]+/)
       .map((p) => p.replace(/\+/g, "").replace(/\s+/g, "").trim())
@@ -172,7 +288,7 @@ export default function Dashboard() {
       let finalMediaUrl = messageForm.media_url;
 
       if (selectedMsgImageFile) {
-        const uploadedUrl = await uploadImageFile(selectedMsgImageFile);
+        const uploadedUrl = await uploadImageFile(selectedMsgImageFile, "promotions");
         if (!uploadedUrl) {
           showNotification("Failed to upload image media", "error");
           setSendingMessage(false);
@@ -190,9 +306,7 @@ export default function Dashboard() {
           phoneNumbers,
           templateName: "bhsolar_promo",
           mediaUrl: finalMediaUrl.trim() || undefined,
-          bodyParameters: [
-            messageForm.message.trim(), // Dynamically maps to {{1}} in template
-          ],
+          bodyParameters: [messageForm.message.trim()],
         }),
       });
 
@@ -200,7 +314,7 @@ export default function Dashboard() {
 
       if (res.ok) {
         showNotification(`✅ Message sent successfully to ${phoneNumbers.length} recipient(s)!`);
-        setMessageForm({ recipients: "", message: "", media_url: DEFAULT_PROMO_IMAGE});
+        setMessageForm({ recipients: "", message: "", media_url: DEFAULT_PROMO_IMAGE });
         setSelectedMsgImageFile(null);
         setMsgImagePreview(DEFAULT_PROMO_IMAGE);
       } else {
@@ -221,9 +335,8 @@ export default function Dashboard() {
 
     let finalImageUrl = productForm.image_url;
 
-    // Upload selected file first if available
     if (selectedImageFile) {
-      const uploadedUrl = await uploadImageFile(selectedImageFile);
+      const uploadedUrl = await uploadImageFile(selectedImageFile, "products");
       if (!uploadedUrl) {
         showNotification("Failed to upload image. Product not saved.", "error");
         setUploadingImage(false);
@@ -291,10 +404,155 @@ export default function Dashboard() {
       model: "",
       desc: "",
       specs: "",
-      image_url: ""
+      image_url: "",
     });
     setSelectedImageFile(null);
     setImagePreview("");
+  };
+
+  // Shoe Handlers
+  const handleShoeColorwayImageSelect = (index: number, file: File | null) => {
+    setSelectedShoeFiles((prev) => ({ ...prev, [index]: file }));
+    if (file) {
+      const previewUrl = URL.createObjectURL(file);
+      setShoeImagePreviews((prev) => ({ ...prev, [index]: previewUrl }));
+    }
+  };
+
+  const handleSaveShoe = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setUploadingShoe(true);
+
+    try {
+      const updatedColorways = await Promise.all(
+        shoeForm.colorways.map(async (colorway: any, idx: number) => {
+          const file = selectedShoeFiles[idx];
+          let imageUrl = colorway.image || "";
+
+          if (file) {
+            // Uploads image file specifically to shoes_product bucket folder
+            const uploadedUrl = await uploadImageFile(file, "shoes_product");
+            if (uploadedUrl) {
+              imageUrl = uploadedUrl;
+            } else {
+              showNotification(`Warning: Failed to upload image for colorway ${colorway.name}`, "info");
+            }
+          }
+
+          return {
+            ...colorway,
+            image: imageUrl,
+          };
+        })
+      );
+
+      const generatedSlug = shoeForm.slug || shoeForm.name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+      const generatedId = shoeForm.id || `${shoeForm.gender}-${generatedSlug}`;
+
+      const shoePayload = {
+        ...shoeForm,
+        id: generatedId,
+        slug: generatedSlug,
+        priceCHF: Number(shoeForm.priceCHF),
+        rating: Number(shoeForm.rating),
+        reviewCount: Number(shoeForm.reviewCount),
+        features: STATIC_FEATURES,
+        technologies: STATIC_TECHNOLOGIES,
+        sustainability: STATIC_SUSTAINABILITY,
+        sizes: STATIC_SIZES,
+        colorways: updatedColorways,
+      };
+
+      const res = await fetch("/api/shoes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(shoePayload),
+      });
+
+      if (res.ok) {
+        showNotification("✅ Shoe product saved to Firebase successfully!");
+        setIsShoeModalOpen(false);
+        resetShoeForm();
+        fetchAllData();
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        showNotification(errorData.error || "Failed to save shoe product", "error");
+      }
+    } catch (error) {
+      console.error(error);
+      showNotification("Error occurred while saving shoe product", "error");
+    } finally {
+      setUploadingShoe(false);
+    }
+  };
+
+  const handleDeleteShoe = async (id: string) => {
+    if (!confirm(`Are you sure you want to delete shoe item ${id}?`)) return;
+    const res = await fetch(`/api/shoes/${id}`, { method: "DELETE" });
+    if (res.ok) {
+      showNotification("Shoe product removed");
+      fetchAllData();
+    }
+  };
+
+  const editShoe = (item: any) => {
+    setShoeForm({
+      id: item.id || "",
+      slug: item.slug || "",
+      name: item.name || "",
+      subCategory: item.subCategory || "Road Running",
+      gender: item.gender || "men",
+      activity: item.activity || "Road Running",
+      cushioning: item.cushioning || "Max",
+      priceCHF: item.priceCHF || 199.90,
+      isNew: item.isNew !== false,
+      isBestSeller: item.isBestSeller !== false,
+      badge: item.badge || "Flagship Edition",
+      weight: item.weight || "248 g / 8.7 oz",
+      heelDrop: item.heelDrop || "7 mm",
+      stability: item.stability || "Neutral Balanced",
+      lacing: item.lacing || "Speed Lacing System",
+      description: item.description || "",
+      rating: item.rating || 4.9,
+      reviewCount: item.reviewCount || 312,
+      colorways: item.colorways && item.colorways.length > 0 ? item.colorways : JSON.parse(JSON.stringify(DEFAULT_COLORWAYS)),
+    });
+
+    const initialPreviews: { [key: number]: string } = {};
+    if (item.colorways) {
+      item.colorways.forEach((cw: any, idx: number) => {
+        if (cw.image) initialPreviews[idx] = cw.image;
+      });
+    }
+    setShoeImagePreviews(initialPreviews);
+    setSelectedShoeFiles({});
+    setIsShoeModalOpen(true);
+  };
+
+  const resetShoeForm = () => {
+    setShoeForm({
+      id: "",
+      slug: "",
+      name: "",
+      subCategory: "Road Running",
+      gender: "men",
+      activity: "Road Running",
+      cushioning: "Max",
+      priceCHF: 199.90,
+      isNew: true,
+      isBestSeller: true,
+      badge: "Flagship Edition",
+      weight: "248 g / 8.7 oz",
+      heelDrop: "7 mm",
+      stability: "Neutral Balanced",
+      lacing: "Speed Lacing System",
+      description: "The definitive daily running shoe, engineered in Zurich.",
+      rating: 4.9,
+      reviewCount: 312,
+      colorways: JSON.parse(JSON.stringify(DEFAULT_COLORWAYS)),
+    });
+    setSelectedShoeFiles({});
+    setShoeImagePreviews({});
   };
 
   // Menu Handlers
@@ -420,6 +678,7 @@ export default function Dashboard() {
           <nav className="space-y-1">
             {[
               { id: "products", label: "Catalog Products", icon: "📦", count: products.length },
+              { id: "shoes", label: "Shoe Products", icon: "👟", count: shoes.length },
               { id: "menu", label: "Main Menu Config", icon: "📋" },
               { id: "netmetering", label: "Net Metering Guide", icon: "☀️" },
               { id: "errors", label: "Fault Knowledgebase", icon: "🛠", count: errorCodes.length },
@@ -439,9 +698,11 @@ export default function Dashboard() {
                   <span>{tab.label}</span>
                 </div>
                 {tab.count !== undefined && (
-                  <span className={`text-[11px] px-2 py-0.5 rounded-full font-bold ${
-                    activeTab === tab.id ? "bg-blue-200/60 text-blue-800" : "bg-slate-100 text-slate-500"
-                  }`}>
+                  <span
+                    className={`text-[11px] px-2 py-0.5 rounded-full font-bold ${
+                      activeTab === tab.id ? "bg-blue-200/60 text-blue-800" : "bg-slate-100 text-slate-500"
+                    }`}
+                  >
                     {tab.count}
                   </span>
                 )}
@@ -475,20 +736,25 @@ export default function Dashboard() {
           <div>
             <h2 className="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
               {activeTab === "products" && "📦 Catalog Management"}
+              {activeTab === "shoes" && "👟 Shoe Products Management"}
               {activeTab === "menu" && "📋 WhatsApp Interactive Menu"}
               {activeTab === "netmetering" && "☀ Net Metering Guide Editor"}
               {activeTab === "errors" && "🛠️ Error Fault Knowledgebase"}
               {activeTab === "messages" && "💬 Send WhatsApp Message"}
             </h2>
             <p className="text-xs text-slate-500 mt-1">
-              Changes saved here update the WhatsApp Bot instantly after cache clear.
+              Changes saved here update the database and store fronts instantly after sync.
             </p>
           </div>
 
-          <div className="grid grid-cols-3 gap-3 text-center">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
             <div className="bg-white border border-slate-200/80 px-4 py-2 rounded-xl shadow-2xs">
-              <span className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider">Products</span>
+              <span className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider">Catalog</span>
               <span className="text-base font-black text-slate-900">{products.filter((p) => p.active !== false).length}</span>
+            </div>
+            <div className="bg-white border border-slate-200/80 px-4 py-2 rounded-xl shadow-2xs">
+              <span className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider">Shoes</span>
+              <span className="text-base font-black text-slate-900">{shoes.length}</span>
             </div>
             <div className="bg-white border border-slate-200/80 px-4 py-2 rounded-xl shadow-2xs">
               <span className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider">Menu Rows</span>
@@ -505,6 +771,7 @@ export default function Dashboard() {
         <div className="flex md:hidden gap-2 overflow-x-auto pb-2 border-b border-slate-200">
           {[
             { id: "products", label: "Products" },
+            { id: "shoes", label: "Shoes" },
             { id: "menu", label: "Menu" },
             { id: "netmetering", label: "Guide" },
             { id: "errors", label: "Faults" },
@@ -673,7 +940,156 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* ==================== TAB 2: MAIN MENU CONFIG ==================== */}
+        {/* ==================== TAB 2: SHOE PRODUCTS ==================== */}
+        {activeTab === "shoes" && (
+          <div className="space-y-5">
+            <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
+              <div className="flex flex-col sm:flex-row gap-3 flex-1">
+                <div className="relative flex-1 max-w-md">
+                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Search shoe name, slug, activity, ID..."
+                    value={shoeSearch}
+                    onChange={(e) => setShoeSearch(e.target.value)}
+                    className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-4 py-2 text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-colors shadow-2xs"
+                  />
+                </div>
+
+                <div className="relative w-full sm:w-52">
+                  <select
+                    value={shoeGenderFilter}
+                    onChange={(e) => setShoeGenderFilter(e.target.value)}
+                    className="w-full appearance-none bg-white border border-slate-200 rounded-xl pl-3.5 pr-10 py-2 text-xs font-medium text-slate-700 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-colors cursor-pointer shadow-2xs"
+                  >
+                    <option value="all">All Genders</option>
+                    <option value="men">Men</option>
+                    <option value="women">Women</option>
+                    <option value="unisex">Unisex</option>
+                  </select>
+                  <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 flex items-center justify-center">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                onClick={() => {
+                  resetShoeForm();
+                  setIsShoeModalOpen(true);
+                }}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 shadow-sm shadow-blue-500/10 active:scale-95"
+              >
+                <span>👟 Add Shoe Product</span>
+              </button>
+            </div>
+
+            {/* Shoes Table */}
+            <div className="bg-white border border-slate-200/80 rounded-2xl overflow-hidden shadow-2xs">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs text-slate-700">
+                  <thead className="bg-slate-50/80 text-slate-500 font-bold uppercase text-[10px] tracking-wider border-b border-slate-200">
+                    <tr>
+                      <th className="p-3.5">ID / Slug</th>
+                      <th className="p-3.5">Shoe Name & Category</th>
+                      <th className="p-3.5">Gender / Cushioning</th>
+                      <th className="p-3.5">Price (CHF)</th>
+                      <th className="p-3.5">Colorways</th>
+                      <th className="p-3.5">Badges</th>
+                      <th className="p-3.5 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {filteredShoes.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="text-center py-10 text-slate-400">
+                          No shoe products found. Click "Add Shoe Product" to create one.
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredShoes.map((shoe) => (
+                        <tr key={shoe.id} className="hover:bg-slate-50/60 transition-colors">
+                          <td className="p-3.5">
+                            <div className="font-mono text-[11px] font-bold text-slate-800">{shoe.id}</div>
+                            <div className="text-[10px] text-slate-400 font-mono">{shoe.slug}</div>
+                          </td>
+                          <td className="p-3.5">
+                            <div className="font-bold text-slate-900 text-sm">{shoe.name}</div>
+                            <div className="text-[11px] text-blue-600 font-medium">{shoe.subCategory} • {shoe.activity}</div>
+                          </td>
+                          <td className="p-3.5">
+                            <span className="capitalize bg-slate-100 px-2 py-0.5 rounded text-[10px] font-bold text-slate-700 mr-1.5">
+                              {shoe.gender}
+                            </span>
+                            <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-[10px] font-semibold">
+                              {shoe.cushioning} Cushion
+                            </span>
+                          </td>
+                          <td className="p-3.5 font-bold text-slate-900 text-xs">CHF {shoe.priceCHF?.toFixed(2)}</td>
+                          <td className="p-3.5">
+                            <div className="flex items-center gap-1.5">
+                              {shoe.colorways?.map((cw: any, i: number) => (
+                                <div
+                                  key={i}
+                                  className="w-5 h-5 rounded-full border border-slate-300 shadow-2xs relative overflow-hidden"
+                                  title={cw.name}
+                                  style={{
+                                    background: `linear-gradient(135deg, ${cw.primaryColorHex || '#eee'} 50%, ${cw.accentColorHex || '#333'} 50%)`,
+                                  }}
+                                />
+                              ))}
+                            </div>
+                          </td>
+                          <td className="p-3.5">
+                            <div className="flex flex-wrap gap-1">
+                              {shoe.badge && (
+                                <span className="bg-amber-50 text-amber-700 border border-amber-200/80 px-1.5 py-0.5 rounded text-[9px] font-bold">
+                                  {shoe.badge}
+                                </span>
+                              )}
+                              {shoe.isNew && (
+                                <span className="bg-emerald-50 text-emerald-700 border border-emerald-200/80 px-1.5 py-0.5 rounded text-[9px] font-bold">
+                                  NEW
+                                </span>
+                              )}
+                              {shoe.isBestSeller && (
+                                <span className="bg-purple-50 text-purple-700 border border-purple-200/80 px-1.5 py-0.5 rounded text-[9px] font-bold">
+                                  Best Seller
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="p-3.5 text-right space-x-1.5">
+                            <button
+                              onClick={() => editShoe(shoe)}
+                              className="bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all shadow-2xs"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleDeleteShoe(shoe.id)}
+                              className="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all"
+                            >
+                              Delete
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ==================== TAB 3: MAIN MENU CONFIG ==================== */}
         {activeTab === "menu" && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-5">
@@ -789,7 +1205,7 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* ==================== TAB 3: NET METERING ==================== */}
+        {/* ==================== TAB 4: NET METERING ==================== */}
         {activeTab === "netmetering" && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2">
@@ -821,7 +1237,7 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* ==================== TAB 4: FAULT KNOWLEDGEBASE ==================== */}
+        {/* ==================== TAB 5: FAULT KNOWLEDGEBASE ==================== */}
         {activeTab === "errors" && (
           <div className="space-y-5">
             <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
@@ -923,7 +1339,7 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* ==================== TAB 5: SEND MESSAGE ==================== */}
+        {/* ==================== TAB 6: SEND MESSAGE ==================== */}
         {activeTab === "messages" && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2">
@@ -941,7 +1357,7 @@ export default function Dashboard() {
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-xs font-mono text-slate-800 focus:outline-none focus:border-blue-500 focus:bg-white transition-colors"
                   ></textarea>
                   <p className="text-[10px] text-slate-400 mt-1">
-                    Enter numbers separated by commas or new lines. Include country codes without '+' or spaces (e.g. 923001234567).
+                    Enter numbers separated by commas or new lines. Include country codes without '+' or spaces.
                   </p>
                 </div>
 
@@ -964,7 +1380,7 @@ export default function Dashboard() {
                   <label className="text-xs font-bold text-slate-600 uppercase tracking-wider block mb-2">
                     Media Attachment (Optional)
                   </label>
-                  
+
                   <div className="space-y-3">
                     <div className="flex items-center gap-3">
                       {msgImagePreview ? (
@@ -1044,7 +1460,7 @@ export default function Dashboard() {
               <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
                 <span>📱</span> Outbound Message Preview
               </h3>
-              
+
               <div className="bg-[#efeae2] rounded-2xl p-4 border border-slate-200 text-xs shadow-inner min-h-[220px]">
                 {messageForm.recipients && (
                   <div className="text-[10px] font-bold text-slate-500 mb-2 px-1">
@@ -1089,7 +1505,7 @@ export default function Dashboard() {
           <div className="w-full max-w-lg bg-white border-l border-slate-200 h-full p-6 overflow-y-auto space-y-5 shadow-2xl animate-in slide-in-from-right duration-200">
             <div className="flex justify-between items-center border-b border-slate-100 pb-3">
               <h3 className="text-base font-bold text-slate-900">
-                {productForm.id ? "Edit Product" : "Add New Product"}
+                {productForm.id ? "Edit Catalog Product" : "Add New Catalog Product"}
               </h3>
               <button onClick={() => setIsProductModalOpen(false)} className="text-slate-400 hover:text-slate-600 font-bold text-lg p-1">
                 ✕
@@ -1134,7 +1550,7 @@ export default function Dashboard() {
                   <input
                     type="text"
                     required
-                    placeholder="e.g. Huawei, Knox, Growatt"
+                    placeholder="e.g. Huawei, Knox"
                     value={productForm.brand}
                     onChange={(e) => setProductForm({ ...productForm, brand: e.target.value })}
                     className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-blue-500 transition-colors"
@@ -1145,7 +1561,7 @@ export default function Dashboard() {
                   <input
                     type="text"
                     required
-                    placeholder="e.g. Nitrox 5KW, SUN2000"
+                    placeholder="e.g. Nitrox 5KW"
                     value={productForm.model}
                     onChange={(e) => setProductForm({ ...productForm, model: e.target.value })}
                     className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-blue-500 transition-colors"
@@ -1153,7 +1569,6 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              {/* IMAGE UPLOADER FIELD */}
               <div>
                 <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">
                   Product Image
@@ -1256,7 +1671,7 @@ export default function Dashboard() {
                   className="w-4 h-4 rounded accent-blue-600 cursor-pointer"
                 />
                 <label htmlFor="activeCheck" className="text-xs font-semibold text-slate-700 cursor-pointer">
-                  Visible on WhatsApp Bot
+                  Visible on Bot
                 </label>
               </div>
 
@@ -1278,6 +1693,291 @@ export default function Dashboard() {
                 <button
                   type="button"
                   onClick={() => setIsProductModalOpen(false)}
+                  className="bg-slate-100 hover:bg-slate-200 font-semibold px-4 py-2.5 rounded-xl text-xs text-slate-700 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ==================== SLIDE-OVER MODAL: ADD/EDIT SHOE PRODUCT ==================== */}
+      {isShoeModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex justify-end">
+          <div className="w-full max-w-xl bg-white border-l border-slate-200 h-full p-6 overflow-y-auto space-y-5 shadow-2xl animate-in slide-in-from-right duration-200">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+              <h3 className="text-base font-bold text-slate-900">
+                {shoeForm.id ? "Edit Shoe Product" : "Add New Shoe Product"}
+              </h3>
+              <button onClick={() => setIsShoeModalOpen(false)} className="text-slate-400 hover:text-slate-600 font-bold text-lg p-1">
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveShoe} className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Shoe Name</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. CloudRush 2"
+                    value={shoeForm.name}
+                    onChange={(e) => setShoeForm({ ...shoeForm, name: e.target.value })}
+                    className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-blue-500 transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Slug</label>
+                  <input
+                    type="text"
+                    placeholder="soule-cloudrush-2"
+                    value={shoeForm.slug}
+                    onChange={(e) => setShoeForm({ ...shoeForm, slug: e.target.value })}
+                    className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-mono text-slate-800 focus:outline-none focus:border-blue-500 transition-colors"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Gender</label>
+                  <select
+                    value={shoeForm.gender}
+                    onChange={(e) => setShoeForm({ ...shoeForm, gender: e.target.value })}
+                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:border-blue-500"
+                  >
+                    <option value="men">Men</option>
+                    <option value="women">Women</option>
+                    <option value="unisex">Unisex</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">SubCategory</label>
+                  <input
+                    type="text"
+                    value={shoeForm.subCategory}
+                    onChange={(e) => setShoeForm({ ...shoeForm, subCategory: e.target.value })}
+                    className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-800 focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Activity</label>
+                  <input
+                    type="text"
+                    value={shoeForm.activity}
+                    onChange={(e) => setShoeForm({ ...shoeForm, activity: e.target.value })}
+                    className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-800 focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Price (CHF)</label>
+                  <input
+                    type="number"
+                    step="0.10"
+                    required
+                    value={shoeForm.priceCHF}
+                    onChange={(e) => setShoeForm({ ...shoeForm, priceCHF: parseFloat(e.target.value) || 0 })}
+                    className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Cushioning</label>
+                  <input
+                    type="text"
+                    value={shoeForm.cushioning}
+                    onChange={(e) => setShoeForm({ ...shoeForm, cushioning: e.target.value })}
+                    className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-800 focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Badge</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Flagship Edition"
+                    value={shoeForm.badge}
+                    onChange={(e) => setShoeForm({ ...shoeForm, badge: e.target.value })}
+                    className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-800 focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Weight</label>
+                  <input
+                    type="text"
+                    value={shoeForm.weight}
+                    onChange={(e) => setShoeForm({ ...shoeForm, weight: e.target.value })}
+                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Heel Drop</label>
+                  <input
+                    type="text"
+                    value={shoeForm.heelDrop}
+                    onChange={(e) => setShoeForm({ ...shoeForm, heelDrop: e.target.value })}
+                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Stability</label>
+                  <input
+                    type="text"
+                    value={shoeForm.stability}
+                    onChange={(e) => setShoeForm({ ...shoeForm, stability: e.target.value })}
+                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Lacing System</label>
+                  <input
+                    type="text"
+                    value={shoeForm.lacing}
+                    onChange={(e) => setShoeForm({ ...shoeForm, lacing: e.target.value })}
+                    className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-800"
+                  />
+                </div>
+                <div className="flex gap-4 items-center pt-5">
+                  <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={shoeForm.isNew}
+                      onChange={(e) => setShoeForm({ ...shoeForm, isNew: e.target.checked })}
+                      className="w-4 h-4 rounded accent-blue-600 cursor-pointer"
+                    />
+                    <span>Is New</span>
+                  </label>
+                  <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={shoeForm.isBestSeller}
+                      onChange={(e) => setShoeForm({ ...shoeForm, isBestSeller: e.target.checked })}
+                      className="w-4 h-4 rounded accent-blue-600 cursor-pointer"
+                    />
+                    <span>Is Best Seller</span>
+                  </label>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Description</label>
+                <textarea
+                  rows={3}
+                  value={shoeForm.description}
+                  onChange={(e) => setShoeForm({ ...shoeForm, description: e.target.value })}
+                  className="w-full bg-white border border-slate-200 rounded-xl p-3 text-xs text-slate-800 focus:outline-none focus:border-blue-500"
+                ></textarea>
+              </div>
+
+              {/* COLORWAY IMAGES SECTION */}
+              <div className="pt-2 border-t border-slate-100">
+                <label className="text-xs font-bold text-slate-600 uppercase tracking-wider block mb-2">
+                  Colorways & Image Uploads (Saved to `shoes_product` bucket)
+                </label>
+
+                <div className="space-y-3">
+                  {shoeForm.colorways.map((cw: any, idx: number) => (
+                    <div key={cw.id || idx} className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-slate-800 text-xs">{cw.name}</span>
+                        <div className="flex items-center gap-1">
+                          <span className="w-3 h-3 rounded-full border border-slate-300" style={{ backgroundColor: cw.primaryColorHex }} />
+                          <span className="w-3 h-3 rounded-full border border-slate-300" style={{ backgroundColor: cw.accentColorHex }} />
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        {shoeImagePreviews[idx] ? (
+                          <div className="relative w-14 h-14 rounded-lg border border-slate-200 overflow-hidden bg-white shrink-0">
+                            <img src={shoeImagePreviews[idx]} alt={cw.name} className="w-full h-full object-cover" />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleShoeColorwayImageSelect(idx, null);
+                                const updatedCw = [...shoeForm.colorways];
+                                updatedCw[idx].image = "";
+                                setShoeForm({ ...shoeForm, colorways: updatedCw });
+                                setShoeImagePreviews((prev) => ({ ...prev, [idx]: "" }));
+                              }}
+                              className="absolute top-0.5 right-0.5 bg-rose-600 text-white rounded-full text-[9px] w-3.5 h-3.5 flex items-center justify-center"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="w-14 h-14 rounded-lg border-2 border-dashed border-slate-200 flex items-center justify-center text-slate-400 bg-white shrink-0 text-xs">
+                            👟
+                          </div>
+                        )}
+
+                        <div className="flex-1 space-y-1">
+                          <label className="cursor-pointer inline-flex items-center gap-1.5 bg-white hover:bg-slate-100 text-slate-700 text-[11px] font-bold px-3 py-1.5 rounded-lg border border-slate-200 transition-colors">
+                            <span>📁 Upload Color Image</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) handleShoeColorwayImageSelect(idx, file);
+                              }}
+                            />
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="Or paste direct image URL"
+                            value={cw.image || ""}
+                            onChange={(e) => {
+                              const updatedCw = [...shoeForm.colorways];
+                              updatedCw[idx].image = e.target.value;
+                              setShoeForm({ ...shoeForm, colorways: updatedCw });
+                              if (!selectedShoeFiles[idx]) {
+                                setShoeImagePreviews((prev) => ({ ...prev, [idx]: e.target.value }));
+                              }
+                            }}
+                            className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-[11px] font-mono text-slate-800 focus:outline-none"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* STATIC DATA INFORMATIONAL BOX */}
+              <div className="p-3 bg-blue-50/70 border border-blue-100 rounded-xl text-[11px] text-blue-800 space-y-1">
+                <span className="font-bold block">⚡ Auto-Appended Standard Fields:</span>
+                <p>• 4 Standard Propulsion Features, 3 Tech Pod Descriptions, Recycled Content Info & 9 Standard US/EU Sizes will automatically be attached on save.</p>
+              </div>
+
+              <div className="pt-3 flex gap-2.5">
+                <button
+                  type="submit"
+                  disabled={uploadingShoe}
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl text-xs transition-all shadow-sm shadow-emerald-500/10 active:scale-95 flex items-center justify-center gap-2"
+                >
+                  {uploadingShoe ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Uploading Images & Saving...</span>
+                    </>
+                  ) : (
+                    <span>💾 Save Shoe Product</span>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsShoeModalOpen(false)}
                   className="bg-slate-100 hover:bg-slate-200 font-semibold px-4 py-2.5 rounded-xl text-xs text-slate-700 transition-colors"
                 >
                   Cancel
