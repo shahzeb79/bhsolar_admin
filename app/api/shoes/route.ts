@@ -1,43 +1,58 @@
-import { NextResponse } from 'next/server';
+import { NextResponse } from "next/server";
+import { db, clearCloudCache } from "@/lib/firebaseAdmin";
 
-// Optional: GET /api/shoes
 export async function GET() {
-  return NextResponse.json(
-    { message: 'Fetched shoes successfully', data: [] },
-    { status: 200 }
-  );
+  try {
+    // If you prefer to store shoes in the "products" collection alongside other items,
+    // change "shoes" to "products" below.
+    const snapshot = await db.collection("shoes").get();
+    const shoes = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    
+    return NextResponse.json(shoes);
+  } catch (error: any) {
+    return NextResponse.json(
+      { error: error.message || "Failed to fetch shoes" },
+      { status: 500 }
+    );
+  }
 }
 
-// POST /api/shoes
-export async function POST(request: Request) {
+export async function POST(req: Request) {
   try {
-    const body = await request.json();
+    const data = await req.json();
+    let shoeId = (data.id || "").trim();
 
-    // Basic request body validation
-    const { name, brand, price } = body;
-    if (!name || !price) {
-      return NextResponse.json(
-        { error: 'Missing required fields: "name" and "price" are required.' },
-        { status: 400 }
-      );
+    // If no ID is provided, auto-generate one using shoe fields (gender, slug, or name)
+    if (!shoeId) {
+      const nameText = data.slug || data.name || "shoe";
+      const category = data.gender || data.subCategory || "shoes";
+      const slug = nameText
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "_")
+        .replace(/^_+|_+\$/g, "");
+
+      let candidateId = slug ? `${category}_${slug}` : `${category}_${Date.now()}`;
+      const existingDoc = await db.collection("shoes").doc(candidateId).get();
+
+      if (existingDoc.exists) {
+        candidateId = `${candidateId}_${Date.now() % 10000}`;
+      }
+      shoeId = candidateId;
     }
 
-    // Replace this object with your actual database call (e.g., Prisma, Firestore, MongoDB)
-    const newShoe = {
-      id: Date.now().toString(),
-      name,
-      brand: brand || 'Generic',
-      price,
-      createdAt: new Date().toISOString(),
-    };
+    // Delete `id` property from payload before saving doc content
+    delete data.id;
 
+    // Save/merge shoe document into Firestore
+    await db.collection("shoes").doc(shoeId).set(data, { merge: true });
+
+    // Clear cloud cache
+    await clearCloudCache();
+
+    return NextResponse.json({ status: "success", shoe_id: shoeId });
+  } catch (error: any) {
     return NextResponse.json(
-      { message: 'Shoe added successfully', data: newShoe },
-      { status: 201 }
-    );
-  } catch (error) {
-    return NextResponse.json(
-      { error: 'Invalid JSON request payload or internal server error.' },
+      { error: error.message || "Failed to save shoe" },
       { status: 500 }
     );
   }
