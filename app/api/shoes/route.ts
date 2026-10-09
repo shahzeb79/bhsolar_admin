@@ -5,7 +5,7 @@ export async function GET() {
   try {
     // If you prefer to store shoes in the "products" collection alongside other items,
     // change "shoes" to "products" below.
-    const snapshot = await db.collection("shoes").get();
+    const snapshot = await db.collection("shoes_data").get();
     const shoes = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
     
     return NextResponse.json(shoes);
@@ -44,7 +44,7 @@ export async function POST(req: Request) {
     delete data.id;
 
     // Save/merge shoe document into Firestore
-    await db.collection("shoes").doc(shoeId).set(data, { merge: true });
+    await db.collection("shoes_data").doc(shoeId).set(data, { merge: true });
 
     // Clear cloud cache
     await clearCloudCache();
